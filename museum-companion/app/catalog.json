@@ -1,0 +1,121 @@
+{
+  "artworks": [
+    {
+      "beacon_id": "vangogh_starry_night",
+      "title": "The Starry Night",
+      "artist": "Vincent van Gogh",
+      "year": 1889,
+      "medium": "Oil on canvas",
+      "type": "painting",
+      "dimensions": "73.7 cm × 92.1 cm (29 in × 36.25 in)",
+      "location": "Gallery A — Impressionist Wing",
+      "history": "Painted during Van Gogh's twelve-month stay at the Saint-Paul-de-Mausole asylum near Saint-Rémy-de-Provence, France. It depicts the view from the east-facing window of his asylum room at night, with the addition of an idealized village. Van Gogh considered it a failure, writing to his brother Theo that he had 'once again allowed himself to be led astray into reaching for stars that are too big.' Despite this, it has become one of the most recognized paintings in Western art.",
+      "visual_description": "A dark blue night sky dominated by bright, swirling yellow stars and a glowing crescent moon. In the foreground, a dark, flame-like cypress tree reaches towards the sky. Below, a sleepy village rests with a prominent church spire, surrounded by rolling hills.",
+      "technique": "Impasto technique with thick application of paint. The swirling patterns in the sky create a sense of dynamic movement, contrasting with the structured, angular lines of the village below."
+    },
+    {
+      "beacon_id": "davinci_mona_lisa",
+      "title": "Mona Lisa",
+      "artist": "Leonardo da Vinci",
+      "year": 1503,
+      "medium": "Oil on poplar panel",
+      "type": "painting",
+      "dimensions": "77 cm × 53 cm (30 in × 21 in)",
+      "location": "Gallery B — Renaissance Masters",
+      "history": "Considered an archetypal masterpiece of the Italian Renaissance, it is described as 'the best known, the most visited, the most written about, the most sung about, the most parodied work of art in the world.' It portrays Lisa Gherardini, the wife of Florentine merchant Francesco del Giocondo. Leonardo began the painting around 1503 and may have continued refining it until 1517. The work was acquired by King Francis I of France and has been on permanent display at the Louvre since 1797.",
+      "visual_description": "A half-length portrait of a seated woman facing the viewer with a slight, enigmatic smile. She wears a dark, modestly cut dress and a sheer veil over her hair. Her hands rest gently crossed. Behind her is a hazy, mountainous landscape with winding paths and a bridge.",
+      "technique": "Sfumato technique, a subtle blurring of edges and blending of colors that creates a soft, hazy effect, particularly around the subject's eyes and mouth, contributing to her famous enigmatic expression."
+    },
+    {
+      "beacon_id": "vermeer_pearl_earring",
+      "title": "Girl with a Pearl Earring",
+      "artist": "Johannes Vermeer",
+      "year": 1665,
+      "medium": "Oil on canvas",
+      "type": "painting",
+      "dimensions": "44.5 cm × 39 cm (17.5 in × 15 in)",
+      "location": "Gallery C — Dutch Golden Age",
+      "history": "Often referred to as the 'Mona Lisa of the North', this painting is a tronie — a Dutch 17th-century description of a 'head' that was not intended to be a formal portrait. The girl's identity remains unknown, adding to the painting's enduring mystery. The work was largely forgotten until it was purchased at auction in The Hague in 1881 for just two guilders.",
+      "visual_description": "A young girl is shown in a three-quarter profile looking over her left shoulder towards the viewer. She wears a striking blue and yellow turban and a large, reflective teardrop-shaped pearl earring. Her lips are slightly parted, and she is set against a completely dark background.",
+      "technique": "Masterful use of light and shadow (chiaroscuro). The pearl is depicted with just a few strokes of white and gray lead paint, reflecting the light source from the left and the white collar below."
+    },
+    {
+      "beacon_id": "monet_water_lilies",
+      "title": "Water Lilies",
+      "artist": "Claude Monet",
+      "year": 1906,
+      "medium": "Oil on canvas",
+      "type": "painting",
+      "dimensions": "89.9 cm × 94.1 cm (35.4 in × 37 in)",
+      "location": "Gallery A — Impressionist Wing",
+      "history": "Part of a series of approximately 250 oil paintings by Claude Monet depicting his flower garden at his home in Giverny, France. Monet painted the series during the last thirty years of his life, even as his eyesight was increasingly compromised by cataracts. The Water Lilies paintings are considered among the most important precursors to abstract art.",
+      "visual_description": "A soft, luminous surface of a pond covered with clusters of water lilies in gentle pinks, whites, and yellows. The water reflects the sky and surrounding willows in shimmering blues, greens, and purples. There is no horizon line — the viewer looks straight down into an enveloping, dreamlike expanse.",
+      "technique": "Broken color technique with rapid, visible brushstrokes layered to capture fleeting light and reflections. Monet dissolved form into patches of pure color, anticipating abstract expressionism by half a century."
+    },
+    {
+      "beacon_id": "klimt_the_kiss",
+      "title": "The Kiss",
+      "artist": "Gustav Klimt",
+      "year": 1908,
+      "medium": "Oil and gold leaf on canvas",
+      "type": "painting",
+      "dimensions": "180 cm × 180 cm (71 in × 71 in)",
+      "location": "Gallery D — Art Nouveau & Symbolism",
+      "history": "Painted during Klimt's 'Golden Phase', heavily influenced by Byzantine mosaics he saw during a trip to Ravenna, Italy. The painting depicts a couple locked in an intimate embrace on a flowery cliff edge. It was purchased by the Austrian government before it was even finished and has remained in Vienna ever since. It is considered a masterpiece of the early modern period and the pinnacle of Klimt's gilded style.",
+      "visual_description": "A couple kneels on a bed of flowers at the edge of a golden cliff. The man bends down to kiss the woman on her cheek as she tilts her head and closes her eyes. Both figures are wrapped in elaborately patterned golden robes — the man's decorated with rectangular black-and-white geometric shapes, the woman's with circular, floral motifs.",
+      "technique": "Mixed media combining oil paint with applied gold leaf and silver leaf. The flat, decorative patterns and lack of depth create a mosaic-like, two-dimensional quality that contrasts with the naturalistic rendering of the faces and hands."
+    },
+    {
+      "beacon_id": "hokusai_great_wave",
+      "title": "The Great Wave off Kanagawa",
+      "artist": "Katsushika Hokusai",
+      "year": 1831,
+      "medium": "Woodblock print (nishiki-e), ink and color on paper",
+      "type": "painting",
+      "dimensions": "25.7 cm × 37.9 cm (10.1 in × 14.9 in)",
+      "location": "Gallery E — East Asian Art",
+      "history": "The first print in Hokusai's series 'Thirty-six Views of Mount Fuji'. Created when Hokusai was around 70 years old, it is the most recognized work of Japanese art in the world. The print uses Prussian blue pigment, recently imported from Europe, which gave the wave its distinctive deep blue hue. It profoundly influenced Western Impressionist painters including Monet, Degas, and Van Gogh.",
+      "visual_description": "An enormous, cresting wave towers over three fishing boats in the turbulent waters off Kanagawa. The wave's claw-like tendrils of white foam reach out against a pale sky. In the far background, a small but perfectly symmetrical Mount Fuji sits calm and motionless beneath the chaos of the sea.",
+      "technique": "Ukiyo-e woodblock printing with multiple carved cherry-wood blocks pressed sequentially. The composition uses a dramatic low viewpoint and the contrast between the dynamic, curving wave and the static, triangular mountain creates extraordinary visual tension."
+    },
+    {
+      "beacon_id": "michelangelo_david",
+      "title": "David",
+      "artist": "Michelangelo Buonarroti",
+      "year": 1504,
+      "medium": "Marble",
+      "type": "sculpture",
+      "dimensions": "517 cm × 199 cm (17 ft × 6 ft 7 in)",
+      "location": "Gallery F — Sculpture Hall",
+      "history": "Carved from a single block of Carrara marble that had been abandoned by two previous sculptors. Michelangelo was just 26 when he began the work, which took over two years to complete. Originally commissioned for the cathedral of Florence, it was instead placed in the Piazza della Signoria as a symbol of the Florentine Republic's strength and independence. A committee including Leonardo da Vinci and Botticelli decided its final placement.",
+      "visual_description": "A colossal nude male figure stands in contrapposto — his weight shifted onto his right leg, his left leg relaxed and slightly forward. His right hand hangs at his side gripping a stone, while his left hand holds a sling draped over his shoulder. His gaze is intensely focused, looking to his left with furrowed brows and slightly flared nostrils. Every vein, muscle, and tendon is rendered with anatomical precision.",
+      "technique": "Subtractive marble carving using chisels, rasps, and polishing abrasives. Michelangelo famously stated he 'saw the angel in the marble and carved until he set it free.' The exaggerated proportions of the head and right hand were intentional — designed to look correct when viewed from below at its elevated outdoor placement."
+    },
+    {
+      "beacon_id": "rodin_the_thinker",
+      "title": "The Thinker",
+      "artist": "Auguste Rodin",
+      "year": 1904,
+      "medium": "Bronze",
+      "type": "sculpture",
+      "dimensions": "186 cm × 98 cm × 140 cm (73 in × 39 in × 55 in)",
+      "location": "Gallery F — Sculpture Hall",
+      "history": "Originally conceived as part of Rodin's monumental work 'The Gates of Hell', where the figure sat atop the gates representing Dante contemplating the circles of Hell. Rodin later enlarged it into an independent work. The first large-scale bronze was cast in 1904 and placed outside the Panthéon in Paris. It has since become one of the most universally recognized symbols of intellectual activity and philosophical contemplation.",
+      "visual_description": "A powerfully built nude male figure sits on a rough-hewn rock, hunched forward with his right elbow resting on his left thigh. His chin presses against the back of his right hand. His muscles are tensed and every sinew is visible — this is not passive reflection but intense, almost agonized concentration. The surface has a rough, unfinished texture that catches light dynamically.",
+      "technique": "Lost-wax bronze casting from a clay original. Rodin deliberately left visible tool marks, fingerprints, and rough textures on the surface — a revolutionary break from the polished neoclassical tradition that emphasized the raw creative process over idealized finish."
+    },
+    {
+      "beacon_id": "venus_de_milo",
+      "title": "Venus de Milo",
+      "artist": "Alexandros of Antioch (attributed)",
+      "year": -130,
+      "medium": "Parian marble",
+      "type": "sculpture",
+      "dimensions": "211 cm (6 ft 8 in) height",
+      "location": "Gallery G — Classical Antiquities",
+      "history": "Discovered in 1820 on the Greek island of Milos by a peasant farmer named Yorgos Kentrotas. The statue was acquired by France and presented to King Louis XVIII, who donated it to the Louvre. The missing arms have been the subject of centuries of speculation — she may have been holding an apple (a play on the island's name, 'Milos' being close to the Greek word for apple), a shield, or spinning thread.",
+      "visual_description": "A slightly larger-than-life female figure stands in a gentle S-curve (contrapposto). She is nude from the waist up, with drapery gathered low on her hips falling in deep vertical folds to her feet. Both arms are missing — the right just below the shoulder, the left above the elbow. Her face is serene and idealized with a straight nose, full lips, and hair parted in the center and pulled back.",
+      "technique": "Classical Greek sculptural technique using Parian marble, prized for its fine grain and translucency. The statue was originally assembled from several marble blocks joined with vertical dowels — the seam is visible across her hips. Traces of pigment suggest it was originally painted in vivid colors."
+    }
+  ]
+}
