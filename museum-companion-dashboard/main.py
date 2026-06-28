@@ -457,6 +457,17 @@ async def get_index():
             font-size: 1rem;
         }
 
+        .profile-voice-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        @media (max-width: 640px) {
+            .profile-voice-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* Section labels inside cards */
         .section-label {
             display: flex;
@@ -763,17 +774,30 @@ async def get_index():
         <p class="header-subtitle">Named after the Greek muse of history — an AI-powered audio guide that adapts to every visitor with vivid spatial descriptions and deep art history.</p>
     </div>
 
-    <!-- Step 1: Profile -->
+    <!-- Step 1: Profile & Voice Selection -->
     <div class="card" id="card-profile">
         <div class="card-label">
             <div class="step-num">1</div>
-            <span>Select Visitor Profile</span>
+            <span>Configure Visitor Profile & Voice Settings</span>
         </div>
-        <div class="custom-select">
-            <select id="persona">
-                <option value="Visually impaired user. Needs highly literal, vivid visual descriptions focusing on colors, shapes, spatial layout, textures, and physical dimensions of the artwork before discussing history. Speak warmly and inclusively.">👁️ Visually Impaired — Vivid Visuals & Spatial Orientation</option>
-                <option value="Graduate student in Art History. Already knows what paintings look like. Needs deep dives into the artist's technique, historical context, socio-political influences, provenance, and conservation history. Speak academically but enthusiastically.">🎓 Art History Student — Technique, Context & Provenance</option>
-            </select>
+        <div class="profile-voice-grid">
+            <div>
+                <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">Sensory Profile</label>
+                <div class="custom-select">
+                    <select id="persona">
+                        <option value="Visually impaired user. Needs highly literal, vivid visual descriptions focusing on colors, shapes, spatial layout, textures, and physical dimensions of the artwork before discussing history. Speak warmly and inclusively.">👁️ Visually Impaired — Vivid Visuals & Spatial Orientation</option>
+                        <option value="Graduate student in Art History. Already knows what paintings look like. Needs deep dives into the artist's technique, historical context, socio-political influences, provenance, and conservation history. Speak academically but enthusiastically.">🎓 Art History Student — Technique, Context & Provenance</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600;">Text-to-Speech Voice Selection</label>
+                <div class="custom-select">
+                    <select id="voice-select">
+                        <option value="">Loading available system voices...</option>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -882,12 +906,70 @@ async def get_index():
 
     // ── Speech Synthesis ──────────────────────────────────────────
     const synth = window.speechSynthesis;
+    const voiceSelect = document.getElementById('voice-select');
     let voices = [];
     let isSpeaking = false;
 
     function populateVoiceList() {
         voices = synth.getVoices();
+        if (!voiceSelect) return;
+        
+        voiceSelect.innerHTML = '';
+        const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+        
+        if (englishVoices.length === 0) {
+            const option = document.createElement('option');
+            option.textContent = 'No English voices detected';
+            option.value = '';
+            voiceSelect.appendChild(option);
+            return;
+        }
+
+        const voiceNames = [
+            'Microsoft',
+            'Google',
+            'Samantha',
+            'Alex',
+            'Siri',
+            'Daniel',
+            'Karen',
+            'Moira',
+            'Rishi',
+            'Tessa',
+            'Fiona',
+            'Veena',
+            'Serena',
+            'Stephanie',
+            'Victoria',
+            'Hazel',
+            'Susan',
+            'Zira',
+            'David'
+        ];
+        let defaultIndex = 0;
+        let foundPreferred = false;
+
+        englishVoices.forEach((voice, index) => {
+            const option = document.createElement('option');
+            option.textContent = `${voice.name} (${voice.lang})`;
+            if (voice.default) option.textContent += ' [Default]';
+            option.value = voice.name;
+            voiceSelect.appendChild(option);
+
+            if (!foundPreferred) {
+                for (const name of voiceNames) {
+                    if (voice.name.toLowerCase().includes(name.toLowerCase())) {
+                        defaultIndex = index;
+                        foundPreferred = true;
+                        break;
+                    }
+                }
+            }
+        });
+
+        voiceSelect.selectedIndex = defaultIndex;
     }
+    
     populateVoiceList();
     if (speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = populateVoiceList;
@@ -898,23 +980,13 @@ async def get_index():
         if (!text) return;
 
         const utterance = new SpeechSynthesisUtterance(text);
-        const voiceNames = [
-            'Microsoft',
-            'Google US English',
-            'Samantha',
-            'Alex',
-            'Siri',
-            'Daniel'
-        ];
-        let preferredVoice = null;
-        for (const name of voiceNames) {
-            preferredVoice = voices.find(v => v.name.toLowerCase().includes(name.toLowerCase()));
-            if (preferredVoice) break;
+        
+        if (voiceSelect && voiceSelect.value) {
+            const selectedVoice = voices.find(v => v.name === voiceSelect.value);
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
         }
-        if (!preferredVoice) {
-            preferredVoice = voices.find(v => v.lang.startsWith('en-'));
-        }
-        if (preferredVoice) utterance.voice = preferredVoice;
 
         utterance.pitch = 1.0;
         utterance.rate = 0.88;
