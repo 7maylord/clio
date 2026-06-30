@@ -2,7 +2,6 @@
 import os
 import json
 import google.auth
-from pydantic import BaseModel, Field
 from google.adk.workflow import Workflow, node, START
 from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
@@ -71,43 +70,35 @@ model = Gemini(
 )
 
 
-# ── Curator Agent ─────────────────────────────────────────────────────────────
-class CuratorOutput(BaseModel):
-    bullet_points: str = Field(description="A bulleted list of aspects to highlight.")
-
-curator = LlmAgent(
-    name="curator",
+# ── Unified Clio Guide Agent ─────────────────────────────────────────────────
+# Merges the former Curator + Narrator into a single LLM pass.
+# No structured output schema → allows streaming tokens immediately.
+clio_guide = LlmAgent(
+    name="clio_guide",
     model=model,
     instruction=(
-        "You are the Curator module of Clio, an AI museum companion named after "
-        "the Greek muse of history. A visitor has arrived at an artwork. "
-        "Their message contains the beacon_id and their visitor profile. "
-        "1. Extract the beacon_id from their message. "
-        "2. Use the get_artwork_details tool to fetch artwork metadata. "
-        "3. Analyze the visitor's profile to decide what to emphasize. "
-        "4. Output a focused bulleted list of key aspects to narrate."
+        "You are Clio, an AI museum companion named after the Greek muse of history. "
+        "A visitor has arrived at an artwork. Their message contains the beacon_id "
+        "and their visitor profile.\n\n"
+        "Follow these steps:\n"
+        "1. Extract the beacon_id from the visitor's message.\n"
+        "2. Use the get_artwork_details tool to fetch the artwork's metadata.\n"
+        "3. Analyze the visitor's profile to decide what to emphasize:\n"
+        "   - For 'visually-impaired' visitors: Focus on spatial orientation, colors, "
+        "shapes, brushstroke texture, physical dimensions, and sensory-rich descriptions "
+        "that paint a vivid mental picture.\n"
+        "   - For 'art-history-student' visitors: Focus on historical context, "
+        "socio-political influences, artistic technique, provenance, conservation "
+        "history, and comparative analysis with the artist's other works.\n"
+        "4. Write a warm, engaging narration script to be read aloud via Text-to-Speech.\n\n"
+        "CRITICAL OUTPUT RULES:\n"
+        "- Output ONLY the narration text. Nothing else.\n"
+        "- Do NOT include markdown formatting, bold text, headers, or bullet points.\n"
+        "- Do NOT wrap your response in JSON or any structured format.\n"
+        "- Write pure conversational prose suitable for audio playback.\n"
+        "- Start speaking directly to the visitor (e.g., 'Welcome! Let's explore...')."
     ),
     tools=[get_artwork_details],
-    output_schema=CuratorOutput,
-    output_key="curator_notes",
-)
-
-
-# ── Narrator Agent ────────────────────────────────────────────────────────────
-class NarratorOutput(BaseModel):
-    script: str = Field(description="The warm, conversational narration script.")
-
-narrator = LlmAgent(
-    name="narrator",
-    model=model,
-    instruction=(
-        "You are the Narrator module of Clio, an AI museum companion named after "
-        "the Greek muse of history. Take the Curator's bullet points and write "
-        "a warm, engaging narration script to be read aloud via Text-to-Speech. "
-        "Do NOT include markdown formatting, bold text, or bullet points. "
-        "Output pure conversational text suitable for audio playback."
-    ),
-    output_schema=NarratorOutput,
     output_key="script",
 )
 
@@ -142,9 +133,8 @@ async def deliver_and_ask(ctx: Context, node_input: dict):
 root_agent = Workflow(
     name="clio",
     edges=[
-        (START, curator),
-        (curator, narrator),
-        (narrator, deliver_and_ask),
+        (START, clio_guide),
+        (clio_guide, deliver_and_ask),
     ],
 )
 

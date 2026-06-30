@@ -43,8 +43,15 @@ from google.cloud import aiplatform_v1beta1 as aip_types
 from vertexai.reasoning_engines import _utils
 
 # Initialize Vertex AI
+engine = None
 if project_id and location:
     vertexai.init(project=project_id, location=location)
+    if agent_runtime_id:
+        try:
+            engine = ReasoningEngine(agent_runtime_id)
+            logger.info("ReasoningEngine client initialized globally.")
+        except Exception as e:
+            logger.error(f"Failed to initialize ReasoningEngine globally: {e}")
 
 app = FastAPI(title="Clio — Museum Companion Dashboard")
 
@@ -65,114 +72,124 @@ class ResumeEvent(BaseModel):
 
 @app.post("/api/beacon")
 async def trigger_beacon(event: BeaconEvent):
-    """Creates a new session and sends a beacon event to the deployed agent."""
-    if not project_id or not agent_runtime_id:
-        raise HTTPException(status_code=500, detail="Agent Runtime not configured.")
+    """Creates a new session and streams narration via SSE as chunks arrive."""
+    global engine
+    if not engine:
+        if agent_runtime_id:
+            try:
+                engine = ReasoningEngine(agent_runtime_id)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to initialize Agent client: {e}")
+        else:
+            raise HTTPException(status_code=500, detail="Agent Runtime not configured.")
 
-    try:
-        engine = ReasoningEngine(agent_runtime_id)
+    message_text = (
+        f"Visitor at beacon_id: {event.beacon_id}. "
+        f"Visitor profile: {event.user_profile}"
+    )
 
-        message_text = (
-            f"Visitor at beacon_id: {event.beacon_id}. "
-            f"Visitor profile: {event.user_profile}"
+    message = {
+        "role": "user",
+        "parts": [{"text": message_text}]
+    }
+
+    logger.info(f"Sending beacon event: {event.beacon_id}")
+
+    def invoke_query():
+        return engine.execution_api_client.stream_query_reasoning_engine(
+            request=aip_types.types.StreamQueryReasoningEngineRequest(
+                name=engine.resource_name,
+                input={
+                    "user_id": "museum-visitor",
+                    "message": message,
+                },
+                class_method="stream_query",
+            )
         )
 
-        message = {
-            "role": "user",
-            "parts": [{"text": message_text}]
-        }
+    async def event_generator():
+        import json as _json
+        try:
+            response = await asyncio.to_thread(invoke_query)
 
-        logger.info(f"Sending beacon event: {event.beacon_id}")
+            for chunk in response:
+                for parsed in _utils.yield_parsed_json(chunk):
+                    if not parsed:
+                        continue
 
-        def invoke_query():
-            return engine.execution_api_client.stream_query_reasoning_engine(
-                request=aip_types.types.StreamQueryReasoningEngineRequest(
-                    name=engine.resource_name,
-                    input={
-                        "user_id": "museum-visitor",
-                        "message": message,
-                    },
-                    class_method="stream_query",
-                )
-            )
+                    # Emit session_id as soon as we see it
+                    if "session_id" in parsed:
+                        yield f"data: {_json.dumps({'type': 'session', 'session_id': parsed['session_id']})}\n\n"
 
-        response = await asyncio.to_thread(invoke_query)
+                    # Extract text content from agent events
+                    content = parsed.get("content")
+                    if content and "parts" in content:
+                        for part in content["parts"]:
+                            # Handle plain text (from unified clio_guide agent)
+                            text = part.get("text", "")
+                            if text:
+                                # Try to parse as JSON (legacy structured output)
+                                try:
+                                    parsed_data = _json.loads(text)
+                                    if isinstance(parsed_data, dict) and "script" in parsed_data:
+                                        text = parsed_data["script"]
+                                except Exception:
+                                    pass
+                                yield f"data: {_json.dumps({'type': 'text', 'text': text})}\n\n"
 
-        # Parse response events
-        events = []
-        for chunk in response:
-            for parsed in _utils.yield_parsed_json(chunk):
-                if parsed:
-                    events.append(parsed)
+                            # Handle HITL interrupt
+                            if "function_call" in part and part["function_call"].get("name") == "adk_request_input":
+                                args = part["function_call"].get("args", {})
+                                yield f"data: {_json.dumps({'type': 'interrupt', 'interrupt_id': part['function_call'].get('id', ''), 'message': args.get('message', 'What would you like to do next?')})}\n\n"
 
-        # Extract text content and session_id
-        responses = []
-        session_id = None
-        interrupt = None
+            # Fallback: try to find session_id from session listing
+            if agent_engine_id:
+                try:
+                    session_service = VertexAiSessionService(
+                        project=project_id,
+                        location=location,
+                        agent_engine_id=agent_engine_id
+                    )
+                    list_resp = await session_service.list_sessions(app_name="app", user_id="museum-visitor")
+                    if list_resp.sessions:
+                        sid = list_resp.sessions[0].id
+                        yield f"data: {_json.dumps({'type': 'session', 'session_id': sid})}\n\n"
+                        logger.info(f"Retrieved session_id from list_sessions: {sid}")
+                except Exception as se:
+                    logger.error(f"Error listing sessions: {se}")
 
-        for evt in events:
-            # Grab session_id
-            if "session_id" in evt:
-                session_id = evt["session_id"]
+            yield f"data: {_json.dumps({'type': 'done'})}\n\n"
 
-            # Check for content text
-            content = evt.get("content")
-            if content and "parts" in content:
-                text = "".join(p.get("text", "") for p in content["parts"] if p.get("text"))
-                if text:
-                    try:
-                        import json
-                        parsed_data = json.loads(text)
-                        if isinstance(parsed_data, dict):
-                            if "script" in parsed_data:
-                                responses.append(parsed_data["script"])
-                        else:
-                            responses.append(text)
-                    except Exception:
-                        responses.append(text)
+        except Exception as e:
+            logger.error(f"Error in SSE stream: {e}", exc_info=True)
+            yield f"data: {_json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
 
-            # Check for HITL interrupt
-            for fc in evt.get("content", {}).get("parts", []) if evt.get("content") else []:
-                if "function_call" in fc and fc["function_call"].get("name") == "adk_request_input":
-                    args = fc["function_call"].get("args", {})
-                    interrupt = {
-                        "interrupt_id": fc["function_call"].get("id", ""),
-                        "message": args.get("message", "What would you like to do next?")
-                    }
-
-        if not session_id and agent_engine_id:
-            try:
-                session_service = VertexAiSessionService(
-                    project=project_id,
-                    location=location,
-                    agent_engine_id=agent_engine_id
-                )
-                list_resp = await session_service.list_sessions(app_name="app", user_id="museum-visitor")
-                if list_resp.sessions:
-                    session_id = list_resp.sessions[0].id
-                    logger.info(f"Retrieved session_id from list_sessions: {session_id}")
-            except Exception as se:
-                logger.error(f"Error listing sessions: {se}")
-
-        return {
-            "session_id": session_id,
-            "responses": responses,
-            "interrupt": interrupt
-        }
-
-    except Exception as e:
-        logger.error(f"Error triggering beacon: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+    from starlette.responses import StreamingResponse
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.post("/api/resume")
 async def resume_agent(event: ResumeEvent):
     """Resumes the paused agent session with the visitor's answer."""
-    if not project_id or not agent_runtime_id:
-        raise HTTPException(status_code=500, detail="Agent Runtime not configured.")
+    global engine
+    if not engine:
+        if agent_runtime_id:
+            try:
+                engine = ReasoningEngine(agent_runtime_id)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to initialize Agent client: {e}")
+        else:
+            raise HTTPException(status_code=500, detail="Agent Runtime not configured.")
 
     try:
-        engine = ReasoningEngine(agent_runtime_id)
 
         resume_message = {
             "role": "user",
@@ -909,14 +926,18 @@ async def get_index():
     const voiceSelect = document.getElementById('voice-select');
     let voices = [];
     let isSpeaking = false;
+    let speechQueue = [];
+    let isSpeechBusy = false;
+
+    const VOICE_STORAGE_KEY = 'clio_selected_voice';
 
     function populateVoiceList() {
         voices = synth.getVoices();
         if (!voiceSelect) return;
-        
+
         voiceSelect.innerHTML = '';
         const englishVoices = voices.filter(v => v.lang.startsWith('en'));
-        
+
         if (englishVoices.length === 0) {
             const option = document.createElement('option');
             option.textContent = 'No English voices detected';
@@ -926,28 +947,15 @@ async def get_index():
         }
 
         const voiceNames = [
-            'Microsoft',
-            'Google',
-            'Samantha',
-            'Alex',
-            'Siri',
-            'Daniel',
-            'Karen',
-            'Moira',
-            'Rishi',
-            'Tessa',
-            'Fiona',
-            'Veena',
-            'Serena',
-            'Stephanie',
-            'Victoria',
-            'Hazel',
-            'Susan',
-            'Zira',
-            'David'
+            'Microsoft', 'Google', 'Samantha', 'Alex', 'Siri',
+            'Daniel', 'Karen', 'Moira', 'Rishi', 'Tessa',
+            'Fiona', 'Veena', 'Serena', 'Stephanie', 'Victoria',
+            'Hazel', 'Susan', 'Zira', 'David'
         ];
+
         let defaultIndex = 0;
         let foundPreferred = false;
+        const savedVoice = localStorage.getItem(VOICE_STORAGE_KEY);
 
         englishVoices.forEach((voice, index) => {
             const option = document.createElement('option');
@@ -956,6 +964,13 @@ async def get_index():
             option.value = voice.name;
             voiceSelect.appendChild(option);
 
+            // Priority 1: restore saved voice from localStorage
+            if (savedVoice && voice.name === savedVoice) {
+                defaultIndex = index;
+                foundPreferred = true;
+            }
+
+            // Priority 2: fallback to preferred voice list
             if (!foundPreferred) {
                 for (const name of voiceNames) {
                     if (voice.name.toLowerCase().includes(name.toLowerCase())) {
@@ -969,23 +984,34 @@ async def get_index():
 
         voiceSelect.selectedIndex = defaultIndex;
     }
-    
+
     populateVoiceList();
     if (speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = populateVoiceList;
     }
 
+    // Persist voice selection on change
+    if (voiceSelect) {
+        voiceSelect.addEventListener('change', () => {
+            localStorage.setItem(VOICE_STORAGE_KEY, voiceSelect.value);
+        });
+    }
+
     function speak(text) {
         synth.cancel();
+        speechQueue = [];
+        isSpeechBusy = false;
         if (!text) return;
+        _speakChunk(text);
+    }
 
+    function _speakChunk(text) {
+        if (!text) return;
         const utterance = new SpeechSynthesisUtterance(text);
-        
+
         if (voiceSelect && voiceSelect.value) {
             const selectedVoice = voices.find(v => v.name === voiceSelect.value);
-            if (selectedVoice) {
-                utterance.voice = selectedVoice;
-            }
+            if (selectedVoice) utterance.voice = selectedVoice;
         }
 
         utterance.pitch = 1.0;
@@ -993,14 +1019,42 @@ async def get_index():
 
         const icon = document.getElementById('speaker-icon');
         utterance.onstart = () => { icon.classList.add('playing'); isSpeaking = true; };
-        utterance.onend = () => { icon.classList.remove('playing'); isSpeaking = false; };
+        utterance.onend = () => {
+            // Process next sentence in queue
+            if (speechQueue.length > 0) {
+                const next = speechQueue.shift();
+                _speakChunk(next);
+            } else {
+                icon.classList.remove('playing');
+                isSpeaking = false;
+                isSpeechBusy = false;
+            }
+        };
 
+        isSpeechBusy = true;
         synth.speak(utterance);
+    }
+
+    function queueSpeech(text) {
+        if (!text) return;
+        // Split into sentences for incremental playback
+        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+        for (const sentence of sentences) {
+            const trimmed = sentence.trim();
+            if (!trimmed) continue;
+            if (!isSpeechBusy) {
+                _speakChunk(trimmed);
+            } else {
+                speechQueue.push(trimmed);
+            }
+        }
     }
 
     function toggleSpeech() {
         if (isSpeaking) {
             synth.cancel();
+            speechQueue = [];
+            isSpeechBusy = false;
             document.getElementById('speaker-icon').classList.remove('playing');
             isSpeaking = false;
         } else {
@@ -1009,7 +1063,7 @@ async def get_index():
         }
     }
 
-    // ── Beacon Trigger ────────────────────────────────────────────
+    // ── Beacon Trigger (SSE Streaming) ───────────────────────────
     async function triggerBeacon(beaconId) {
         const profile = document.getElementById('persona').value;
         const responseText = document.getElementById('response-text');
@@ -1021,6 +1075,8 @@ async def get_index():
         responseText.innerHTML = '';
         loader.classList.add('active');
         synth.cancel();
+        speechQueue = [];
+        isSpeechBusy = false;
         document.getElementById('speaker-icon').classList.remove('playing');
 
         try {
@@ -1029,14 +1085,52 @@ async def get_index():
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_profile: profile, beacon_id: beaconId })
             });
-            const data = await res.json();
 
-            if (res.ok) {
-                currentSessionId = data.session_id;
-                handleAgentResponse(data);
-            } else {
-                responseText.innerHTML = `<span style="color: #ef4444;">Error: ${data.detail || 'Unknown error'}</span>`;
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                responseText.innerHTML = `<span style="color: #ef4444;">Error: ${errData.detail || res.statusText}</span>`;
+                loader.classList.remove('active');
+                return;
             }
+
+            // Read SSE stream
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullText = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\\n');
+                buffer = lines.pop(); // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    try {
+                        const event = JSON.parse(line.slice(6));
+
+                        if (event.type === 'session') {
+                            currentSessionId = event.session_id;
+                        } else if (event.type === 'text') {
+                            fullText += event.text;
+                            responseText.innerHTML = fullText;
+                            loader.classList.remove('active');
+                            // Queue sentences for immediate speech
+                            queueSpeech(event.text);
+                        } else if (event.type === 'interrupt') {
+                            currentInterruptId = event.interrupt_id;
+                            document.getElementById('hitl-question').innerText = event.message;
+                            hitlArea.classList.add('visible');
+                        } else if (event.type === 'error') {
+                            responseText.innerHTML += `<br><span style="color: #ef4444;">Error: ${event.detail}</span>`;
+                        }
+                    } catch (e) { /* skip malformed SSE lines */ }
+                }
+            }
+
         } catch (err) {
             responseText.innerHTML = `<span style="color: #ef4444;">Connection error: ${err.message}</span>`;
         } finally {
@@ -1082,7 +1176,7 @@ async def get_index():
         }
     }
 
-    // ── Handle Agent Response ─────────────────────────────────────
+    // ── Handle Agent Response (used by /api/resume) ──────────────
     function handleAgentResponse(data) {
         const responseText = document.getElementById('response-text');
 
